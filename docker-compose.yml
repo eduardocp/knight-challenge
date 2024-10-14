@@ -1,0 +1,34 @@
+services:
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_PASSWORD: "!123@Mudar"
+      POSTGRES_USER: postgres
+      POSTGRES_DB: knight
+    ports:
+      - 6432:5432
+    volumes:
+      - data:/var/lib/postgresql/data
+  knight.api:
+    image: ${DOCKER_REGISTRY-}knightapi
+    depends_on:
+      - postgres
+    build:
+      context: ./api
+      dockerfile: Knight.Api/Dockerfile
+    ports:
+      - 8080:8080
+      - 8081:8081
+    environment:
+      - "Data:KnightConnection=User ID=postgres;Password=!123@Mudar;Host=postgres;Port=5432;Database=knight;Pooling=true;"
+  knight.front:
+    image: ${DOCKER_REGISTRY-}knightfront
+    depends_on:
+      - knight.api
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    ports:
+      - 8090:8080
+volumes:
+  data: {}

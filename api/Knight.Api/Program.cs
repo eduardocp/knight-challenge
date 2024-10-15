@@ -1,5 +1,6 @@
 using Knight.Application.Services;
 using Knight.Domain.Interfaces;
+using Knight.Domain.Models.Dto.Results;
 using Knight.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,11 +8,16 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContextPool<AppDbContext>(opt => opt.UseNpgsql(builder.Configuration["Data:KnightConnection"]));
+builder.Services.AddDbContextPool<AppDbContext>(opt => opt.UseMongoDB(builder.Configuration["MONGODB_URI"] ?? "", builder.Configuration["MONGODB_DATABASE"] ?? ""));
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IKnightService, KnightService>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(name: "Policy", policy => { policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod(); });
+});
 
 var app = builder.Build();
 
@@ -31,7 +37,7 @@ app.MapGet("/knights", async (IKnightService service, [FromQuery(Name = "filter"
 {
     if (!string.IsNullOrEmpty(filter))
     {
-        if (filter == "knightes")
+        if (filter == "heroes")
         {
             return Results.Ok(await service.GetKnights(true));
         }
@@ -43,51 +49,53 @@ app.MapGet("/knights", async (IKnightService service, [FromQuery(Name = "filter"
 
     return Results.Ok(await service.GetKnights(false));
 })
-.Produces<List<Knight.Domain.Models.Dto.KnightDto>>()
+.WithOrder(1)
+.Produces<List<KnightResult>>()
 .WithOpenApi();
 
-app.MapGet("/knights/{id}", async (IKnightService service, [FromRoute] int id) =>
+app.MapGet("/knights/{id}", async (IKnightService service, [FromRoute] string id) =>
 {
     return Results.Ok(await service.GetKnight(id));
 })
-.Produces<Knight.Domain.Models.Dto.KnightDto>()
+.Produces<KnightResult>()
 .WithOpenApi();
 
-app.MapPost("/knights", async (IKnightService service, [FromBody] Knight.Domain.Models.Knight knight) =>
+app.MapPost("/knights", async (IKnightService service, [FromBody] Knight.Domain.Models.Dto.Datas.KnightData knight) =>
 {
-    await service.AddKnight(knight);
-    return Results.Ok();
+    try
+    {
+        return Results.Ok(await service.AddKnight(knight));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 })
+.WithOrder(2)
 .WithOpenApi();
 
-app.MapPatch("/knights/{id}", async (IKnightService service, [FromRoute] int id, [FromBody] Knight.Domain.Models.Knight knight) =>
+app.MapPatch("/knights/{id}", async (IKnightService service, [FromRoute] string id, [FromBody] Knight.Domain.Models.Dto.Datas.KnightData knight) =>
 {
-    await service.UpdateKnight(id, knight);
-    return Results.Ok();
+    try
+    {
+        return Results.Ok(await service.UpdateKnight(id, knight));
+    }
+    catch (Exception ex)
+    {
+        return Results.BadRequest(new { message = ex.Message });
+    }
 })
+.WithOrder(3)
 .WithOpenApi();
 
-app.MapDelete("/knights/{id}", async (IKnightService service, [FromRoute] int id) =>
+app.MapDelete("/knights/{id}", async (IKnightService service, [FromRoute] string id) =>
 {
     await service.RemoveKnight(id);
     return Results.Ok();
 })
+.WithOrder(4)
 .WithOpenApi();
 
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        var db = services.GetRequiredService<AppDbContext>();
-        
-        db.Database.Migrate();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while migrating the database.");
-    }
-}
+app.UseCors("Policy");
 
 app.Run();

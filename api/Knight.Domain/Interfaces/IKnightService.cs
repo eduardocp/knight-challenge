@@ -1,15 +1,17 @@
-﻿namespace Knight.Domain.Interfaces
+﻿using Knight.Domain.Models.Dto.Results;
+
+namespace Knight.Domain.Interfaces
 {
     public interface IKnightService
     {
-        Task<List<Models.Dto.KnightDto>> GetKnights(bool? onlyHeroes);
+        Task<List<KnightResult>> GetKnights(bool? onlyHeroes);
 
-        Task<Models.Dto.KnightDto?> GetKnight(int id);
+        Task<KnightResult?> GetKnight(string id);
 
-        Task AddKnight(Models.Knight knight);
+        Task<KnightResult> AddKnight(Models.Dto.Datas.KnightData knight);
 
-        Task UpdateKnight(int id, Models.Knight knight);
+        Task<KnightResult> UpdateKnight(string id, Models.Dto.Datas.KnightData knight);
 
-        Task RemoveKnight(int id);
+        Task RemoveKnight(string id);
     }
 }

@@ -19,9 +19,9 @@
             return mod.Mod;
         }
 
-        public static int GetKnightAttack(Domain.Models.Knight knight)
+        public static int GetKnightAttack(Domain.Models.Entities.Knight knight)
         {
-            var keyAttribute = knight.KeyAttribute switch
+            var keyAttribute = knight.KeyAttribute.Trim().ToLower() switch
             {
                 "strength" => knight.Attributes.Strength,
                 "dexterity" => knight.Attributes.Dexterity,
